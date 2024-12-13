@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Dec  6 00:18:53 2024
+
+@author: spacingmew
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy as sp
+#deze code is geschreven door student Merlijn Molema 
+# daarna is er met toestemming van de auteur de code veranderd.
+
+
+
+def funcbrekingsindex(theta1, n2):
+    c1 = 2 * n2 * d *(1/np.sqrt(1-n1**2/n2**2 * np.sin(theta1)**2)-1)
+    c2 = (2*d * n1**2 * np.sin(theta1)**2)/np.sqrt(n2**2 - n1**2 * np.sin(theta1)**2)
+    c3 = 2*n1*d * (np.cos(theta1) - 1)
+    return (c1 - c2 - c3)/l 
+
+
+def steekproefgemendev(data):
+    mu = sum(data)/len(data)
+    if type(data) == list:
+        data = np.array(data)
+    dev = np.sqrt(sum((data - mu)**2) / (len(data) - 1))
+    return mu, dev
+
+# in dit document is de dikte aangepast naar de grote waar in dit geval mee is gewerkt.
+d = 1e-3
+l = 532e-9
+n1 = 1.00029
+
+#De meetgegevens die hier zijn ingevuld zijn anders dan die van de auteur.
+N = [[8,6,9,7,8,8,7,9,7,9,6,7,9,7,6],[12,15,17,18,18,16,17,15,15,16,16,17,14,16,17]
+     ,[24,25,25,26,28,23,24,29,25,22,19,20,16,18,23],
+     [73,79,68,74,72],[112,134,113,124,117]]
+
+Ngem = []
+Ndev = []
+
+
+for i in range(len(N)):
+    gem, dev = steekproefgemendev(N[i])
+    Ngem.append(gem)
+    Ndev.append(dev)
+
+gem = sum(Ngem)/len(Ngem)
+SStotal = sum((np.array(Ngem) - gem)**2)
+rangeN = max(max(N)) - min(min(N))
+   
+#In het stukje np.radians(5*Len(N)) is de 5 toegevoegd, aangezien er in dit geval met stappen van 5 graden is gewerkt. 
+theta1 = np.linspace(np.radians(1),np.radians(5*len(N)), len(N))
+    
+popt, pcov, infodict, mesg, ier = sp.optimize.curve_fit(funcbrekingsindex, theta1, Ngem, [1.49], Ndev, full_output = True, absolute_sigma = False)
+perr = np.sqrt(np.diag(pcov))
+SSresidual = sum(infodict['fvec']**2)
+R2 = 1 - SSresidual/SStotal
+RMSE = np.sqrt(sum(infodict['fvec']**2) / len(infodict['fvec']))
+RMSE_mu = RMSE/gem * 100
+RMSE_range = RMSE/rangeN * 100
+MAE = sum(abs(infodict['fvec']))/len(infodict['fvec'])
+MAE_mu = MAE/gem * 100
+MAE_range = MAE/rangeN * 100
+
+MSE = sum((infodict['fvec'])**2)/len(infodict['fvec'])
+
+
+plt.errorbar(theta1, Ngem, yerr=Ndev, fmt='o')
+plt.plot(theta1, funcbrekingsindex(theta1, popt[0]), label = 'n₂ = ' + str(round(popt[0],2)))
+plt.xlabel("θ₁ [rad]")
+plt.ylabel('N [aantal]')
+plt.title('data met de fitvergelijking')
+plt.legend()
+plt.show()
+
+
+print("n₂ = " + str(round(popt[0], 2)) + ' ± ' + str(round(perr[0], 2)) + "\n" + str(100* round(R2, 3)) + '% wordt verklaard door de lijn.')
+print("RMSE is " +  str(round(RMSE_mu, 2)) + '% van μ en ' + str(round(RMSE_range, 2)) +'% van de range van N')
+print("MAE is " +  str(round(MAE_mu, 2)) + '% van μ en ' + str(round(MAE_range, 2)) +'% van de range van N')
